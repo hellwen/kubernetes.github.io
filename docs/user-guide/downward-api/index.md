@@ -2,7 +2,7 @@
 assignees:
 - bgrant0607
 - mikedanese
-
+title: Using the Downward API to Convey Pod Properties
 ---
 
 It is sometimes useful for a container to have information about itself, but we
@@ -114,6 +114,10 @@ The downward API volume refreshes its data in step with the kubelet refresh loop
 
 In future, it will be possible to specify a specific annotation or label.
 
+#### Projecting keys to specific paths and file permissions
+
+You can project keys to specific paths and specific permissions on a per-file
+basis. The [Secrets](/docs/user-guide/secrets/) user guide explains the syntax.
 
 ### Example
 
@@ -125,11 +129,9 @@ This is an example of a pod that consumes its container's resources via the down
 
 {% include code.html language="yaml" file="volume/dapi-volume-resources.yaml" ghlink="/docs/user-guide/downward-api/volume/dapi-volume-resources.yaml" %}
 
-Some more thorough examples:
-
-   * [environment variables](/docs/user-guide/environment-guide/)
-   * [downward API](/docs/user-guide/downward-api/)
+For a more thorough example, see
+[environment variables](/docs/user-guide/environment-guide/).
 
 ## Default values for container resource limits
 
-If cpu and memory limits are not specified for a container, the downward API will default to node's cpu and memory capacities.
+If cpu and memory limits are not specified for a container, the downward API will default to the node allocatable value for cpu and memory.

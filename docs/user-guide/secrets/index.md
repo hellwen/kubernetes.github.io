@@ -1,7 +1,7 @@
 ---
 assignees:
 - mikedanese
-
+title: Secrets
 ---
 
 Objects of type `secret` are intended to hold sensitive information, such as
@@ -113,8 +113,8 @@ metadata:
   name: mysecret
 type: Opaque
 data:
-  password: MWYyZDFlMmU2N2Rm
   username: YWRtaW4=
+  password: MWYyZDFlMmU2N2Rm
 ```
 
 The data field is a map.  Its keys must match
@@ -142,8 +142,8 @@ Get back the secret created in the previous section:
 $ kubectl get secret mysecret -o yaml
 apiVersion: v1
 data:
-  password: MWYyZDFlMmU2N2Rm
   username: YWRtaW4=
+  password: MWYyZDFlMmU2N2Rm
 kind: Secret
 metadata:
   creationTimestamp: 2016-01-22T18:41:56Z
@@ -158,7 +158,7 @@ type: Opaque
 Decode the password field:
 
 ```shell
-$ echo "MWYyZDFlMmU2N2Rm" | base64 -d
+$ echo "MWYyZDFlMmU2N2Rm" | base64 --decode
 1f2d1e2e67df
 ```
 
@@ -262,6 +262,91 @@ If `spec.volumes[].secret.items` is used, only keys specified in `items` are pro
 To consume all keys from the secret, all of them must be listed in the `items` field.
 All listed keys must exist in the corresponding secret. Otherwise, the volume is not created.
 
+**Secret files permissions**
+
+You can also specify the permission mode bits files part of a secret will have.
+If you don't specify any, `0644` is used by default. You can specify a default
+mode for the whole secret volume and override per key if needed.
+
+For example, you can specify a default mode like this:
+
+```json
+{
+ "apiVersion": "v1",
+ "kind": "Pod",
+  "metadata": {
+    "name": "mypod",
+    "namespace": "myns"
+  },
+  "spec": {
+    "containers": [{
+      "name": "mypod",
+      "image": "redis",
+      "volumeMounts": [{
+        "name": "foo",
+        "mountPath": "/etc/foo"
+      }]
+    }],
+    "volumes": [{
+      "name": "foo",
+      "secret": {
+        "secretName": "mysecret",
+        "defaultMode": 256
+      }
+    }]
+  }
+}
+```
+
+Then, the secret will be mounted on `/etc/foo` and all the files created by the
+secret volume mount will have permission `0400`.
+
+Note that the JSON spec doesn't support octal notation, so use the value 256 for
+0400 permissions. If you use yaml instead of json for the pod, you can use octal
+notation to specify permissions in a more natural way.
+
+You can also use mapping, as in the previous example, and specify different
+permission for different files like this:
+
+```json
+{
+ "apiVersion": "v1",
+ "kind": "Pod",
+  "metadata": {
+    "name": "mypod",
+    "namespace": "myns"
+  },
+  "spec": {
+    "containers": [{
+      "name": "mypod",
+      "image": "redis",
+      "volumeMounts": [{
+        "name": "foo",
+        "mountPath": "/etc/foo"
+      }]
+    }],
+    "volumes": [{
+      "name": "foo",
+      "secret": {
+        "secretName": "mysecret",
+        "items": [{
+          "key": "username",
+          "path": "my-group/my-username",
+          "mode": 511
+        }]
+      }
+    }]
+  }
+}
+```
+
+In this case, the file resulting in `/etc/foo/my-group/my-username` will have
+permission value of `0777`. Owing to JSON limitations, you must specify the mode
+in decimal notation.
+
+Note that this permission value might be displayed in decimal notation if you
+read it later.
+
 **Consuming Secret Values from Volumes**
 
 Inside the container that mounts a secret volume, the secret keys appear as
@@ -279,7 +364,7 @@ $ cat /etc/foo/password
 1f2d1e2e67df
 ```
 
-The program in a container is responsible for reading the secret(s) from the
+The program in a container is responsible for reading the secrets from the
 files.
 
 **Mounted Secrets are updated automatically**
@@ -295,7 +380,7 @@ To use a secret in an environment variable in a pod:
 1. Modify your Pod definition in each container that you wish to consume the value of a secret key to add an environment variable for each secret key you wish to consume.  The environment variable that consumes the secret key should populate the secret's name and key in `env[x].valueFrom.secretKeyRef`.
 1. Modify your image and/or command line so that the program looks for values in the specified environment variables
 
-This is an example of a pod that mounts a secret in a volume:
+This is an example of a pod that uses secrets from environment variables:
 
 ```yaml
 apiVersion: v1
@@ -398,10 +483,10 @@ start until all the pod's volumes are mounted.
 Create a secret containing some ssh keys:
 
 ```shell
-$ kubectl create secret generic my-secret --from-file=ssh-privatekey=/path/to/.ssh/id_rsa --from-file=ssh-publickey=/path/to/.ssh/id_rsa.pub
+$ kubectl create secret generic ssh-key-secret --from-file=ssh-privatekey=/path/to/.ssh/id_rsa --from-file=ssh-publickey=/path/to/.ssh/id_rsa.pub
 ```
 
-**Security Note:** think carefully before sending your own ssh keys: other users of the cluster may have access to the secret.  Use a service account which you want to have accessible to all the users with whom you share the kubernetes cluster, and can revoke if they are compromised.
+**Security Note:** think carefully before sending your own ssh keys: other users of the cluster may have access to the secret.  Use a service account which you want to have accessible to all the users with whom you share the Kubernetes cluster, and can revoke if they are compromised.
 
 
 Now we can create a pod which references the secret with the ssh key and
@@ -461,9 +546,9 @@ credentials.
 Make the secrets:
 
 ```shell
-$ kubectl create secret generic prod-db-secret --from-literal=user=produser --from-literal=password=Y4nys7f11
+$ kubectl create secret generic prod-db-secret --from-literal=username=produser --from-literal=password=Y4nys7f11
 secret "prod-db-secret" created
-$ kubectl create secret generic test-db-secret --from-literal=user=testuser --from-literal=password=iluvtests
+$ kubectl create secret generic test-db-secret --from-literal=username=testuser --from-literal=password=iluvtests
 secret "test-db-secret" created
 ```
 
@@ -581,7 +666,7 @@ one called, say, `prod-user` with the `prod-db-secret`, and one called, say,
 
 ### Use-case: Dotfiles in secret volume
 
-In order to make piece of data 'hidden' (ie, in a file whose name begins with a dot character), simply
+In order to make piece of data 'hidden' (i.e., in a file whose name begins with a dot character), simply
 make that key begin with a dot.  For example, when the following secret is mounted into a volume:
 
 ```json

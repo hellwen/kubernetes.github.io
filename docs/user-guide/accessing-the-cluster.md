@@ -2,7 +2,7 @@
 assignees:
 - lavalamp
 - mikedanese
-
+title: Accessing Clusters
 ---
 
 * TOC
@@ -27,7 +27,7 @@ $ kubectl config view
 ```
 
 Many of the [examples](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/) provide an introduction to using
-kubectl and complete documentation is found in the [kubectl manual](/docs/user-guide/kubectl/kubectl).
+kubectl and complete documentation is found in the [kubectl manual](/docs/user-guide/kubectl/index).
 
 ### Directly accessing the REST API
 
@@ -69,9 +69,9 @@ $ curl http://localhost:8080/api/
 }
 ```
 
-#### Without kubectl proxy
+#### Without kubectl proxy (before v1.3.x)
 
-It is also possible to avoid using kubectl proxy by passing an authentication token
+It is possible to avoid using kubectl proxy by passing an authentication token
 directly to the apiserver, like this:
 
 ```shell
@@ -85,7 +85,29 @@ $ curl $APISERVER/api --header "Authorization: Bearer $TOKEN" --insecure
 }
 ```
 
-The above example uses the `--insecure` flag.  This leaves it subject to MITM
+#### Without kubectl proxy (post v1.3.x)
+
+In Kubernetes version 1.3 or later, `kubectl config view` no longer displays the token. Use `kubectl describe secret...` to get the token for the default service account, like this:
+
+``` shell
+$ APISERVER=$(kubectl config view | grep server | cut -f 2- -d ":" | tr -d " ")
+$ TOKEN=$(kubectl describe secret $(kubectl get secrets | grep default | cut -f1 -d ' ') | grep -E '^token' | cut -f2 -d':' | tr -d '\t')
+$ curl $APISERVER/api --header "Authorization: Bearer $TOKEN" --insecure
+{
+  "kind": "APIVersions",
+  "versions": [
+    "v1"
+  ],
+  "serverAddressByClientCIDRs": [
+    {
+      "clientCIDR": "0.0.0.0/0",
+      "serverAddress": "10.0.1.149:443"
+    }
+  ]
+}
+```
+
+The above examples use the `--insecure` flag.  This leaves it subject to MITM
 attacks.  When kubectl accesses the cluster it uses a stored root certificate
 and client certificates to access the server.  (These are installed in the
 `~/.kube` directory).  Since cluster certificates are typically self-signed, it
@@ -100,13 +122,36 @@ with future high-availability support.
 
 ### Programmatic access to the API
 
-There are [client libraries](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/docs/devel/client-libraries.md) for accessing the API
-from several languages.  The Kubernetes project-supported
-[Go](http://releases.k8s.io/{{page.githubbranch}}/pkg/client/)
-client library can use the same [kubeconfig file](/docs/user-guide/kubeconfig-file)
-as the kubectl CLI does to locate and authenticate to the apiserver.
+The Kubernetes project-supported Go client library is at [https://github.com/kubernetes/client-go](https://github.com/kubernetes/client-go).
 
-See documentation for other libraries for how they authenticate.
+To use it, 
+* To get the library, run the following command: `go get k8s.io/client-go/<version number>/kubernetes` See [https://github.com/kubernetes/client-go](https://github.com/kubernetes/client-go) to see which versions are supported.
+* Write an application atop of the client-go clients. Note that client-go defines its own API objects, so if needed, please import API definitions from client-go rather than from the main repository, e.g., `import "k8s.io/client-go/1.4/pkg/api/v1"` is correct.
+
+The Go client can use the same [kubeconfig file](/docs/user-guide/kubeconfig-file)
+as the kubectl CLI does to locate and authenticate to the apiserver. See this [example](https://github.com/kubernetes/client-go/blob/master/examples/out-of-cluster/main.go):
+
+```golang
+import (
+	"fmt"
+	"k8s.io/client-go/1.4/kubernetes"
+	"k8s.io/client-go/1.4/pkg/api/v1"
+	"k8s.io/client-go/1.4/tools/clientcmd"
+)
+...
+	// uses the current context in kubeconfig
+	config, _ := clientcmd.BuildConfigFromFlags("", "path to kubeconfig")
+	// creates the clientset
+	clientset, _:= kubernetes.NewForConfig(config)
+	// access the API to list pods
+	pods, _:= clientset.Core().Pods("").List(v1.ListOptions{})
+	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+...
+```
+
+If the application is deployed as a Pod in the cluster, please refer to the [next section](#accessing-the-api-from-a-pod).
+
+There are [client libraries](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/docs/devel/client-libraries.md) for accessing the API from other languages. See documentation for other libraries for how they authenticate.
 
 ### Accessing the API from a Pod
 
@@ -137,8 +182,8 @@ From within a pod the recommended ways to connect to API are:
     Kubernetes API to the localhost interface of the pod, so that other processes
     in any container of the pod can access it.  See this [example of using kubectl proxy
     in a pod](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/kubectl-container/).
-  - use the Go client library, and create a client using the `client.NewInCluster()` factory.
-    This handles locating and authenticating to the apiserver.
+  - use the Go client library, and create a client using the `rest.InClusterConfig()` and `kubernetes.NewForConfig()` functions.
+    They handle locating and authenticating to the apiserver. [example](https://github.com/kubernetes/client-go/blob/master/examples/in-cluster/main.go)
 
 In each case, the credentials of the pod are used to communicate securely with the apiserver.
 

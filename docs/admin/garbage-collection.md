@@ -1,7 +1,7 @@
 ---
 assignees:
 - mikedanese
-
+title: Configuring kubelet Garbage Collection
 ---
 
 * TOC
@@ -13,11 +13,11 @@ External garbage collection tools are not recommended as these tools can potenti
 
 ### Image Collection
 
-kubernetes manages lifecycle of all images through imageManager, with the cooperation
+Kubernetes manages lifecycle of all images through imageManager, with the cooperation
 of cadvisor.
 
 The policy for garbage collecting images takes two factors into consideration:
-`HighThresholdPercent` and `LowThresholdPercent`. Disk usage above the the high threshold
+`HighThresholdPercent` and `LowThresholdPercent`. Disk usage above the high threshold
 will trigger garbage collection. The garbage collection will delete least recently used images until the low
 threshold has been met.
 
@@ -52,5 +52,5 @@ Containers can potentially be garbage collected before their usefulness has expi
 can contain logs and other data that can be useful for troubleshooting. A sufficiently large value for
 `maximum-dead-containers-per-container` is highly recommended to allow at least 2 dead containers to be
 retained per expected container. A higher value for `maximum-dead-containers` is also recommended for a
-similiar reason.
+similar reason.
 See [this issue](https://github.com/kubernetes/kubernetes/issues/13287) for more details.

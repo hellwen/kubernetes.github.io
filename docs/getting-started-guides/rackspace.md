@@ -1,7 +1,7 @@
 ---
 assignees:
 - erictune
-
+title: CoreOS on Rackspace
 ---
 
 * Supported Version: v0.18.1
@@ -45,7 +45,7 @@ There is a specific `cluster/rackspace` directory with the scripts for the follo
 
 1. A cloud network will be created and all instances will be attached to this network.
   - flanneld uses this network for next hop routing. These routes allow the containers running on each node to communicate with one another on this private network.
-2. A SSH key will be created and uploaded if needed. This key must be used to ssh into the machines (we do not capture the password).
+2. An SSH key will be created and uploaded if needed. This key must be used to ssh into the machines (we do not capture the password).
 3. The master server and additional nodes will be created via the `nova` CLI. A `cloud-config.yaml` is generated and provided as user-data with the entire configuration for the systems.
 4. We then boot as many nodes as defined via `$NUM_NODES`.
 
@@ -62,7 +62,7 @@ There is a specific `cluster/rackspace` directory with the scripts for the follo
 ## Network Design
 
 - eth0 - Public Interface used for servers/containers to reach the internet
-- eth1 - ServiceNet - Intra-cluster communication (k8s, etcd, etc) communicate via this interface. The `cloud-config` files use the special CoreOS identifier `$private_ipv4` to configure the services.
+- eth1 - ServiceNet - Intra-cluster communication (k8s, etcd, etc.) communicate via this interface. The `cloud-config` files use the special CoreOS identifier `$private_ipv4` to configure the services.
 - eth2 - Cloud Network - Used for k8s pods to communicate with one another. The proxy service will pass traffic via this interface.
 
 ## Support Level

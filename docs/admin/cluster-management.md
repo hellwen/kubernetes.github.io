@@ -2,7 +2,7 @@
 assignees:
 - lavalamp
 - thockin
-
+title: Cluster Management Guide
 ---
 
 * TOC
@@ -84,7 +84,7 @@ no node that has enough free capacity (or doesn't match other pod requirements) 
 to wait until some pods are terminated or a new node is added.
 
 Cluster autoscaler looks for the pods that cannot be scheduled and checks if adding a new node, similar
-to the other in the cluster, would help. If yes, then it resizes the cluster to accomodate the waiting pods.
+to the other in the cluster, would help. If yes, then it resizes the cluster to accommodate the waiting pods.
 
 Cluster autoscaler also scales down the cluster if it notices that some node is not needed anymore for
 an extended period of time (10min but it may change in the future).
@@ -92,16 +92,16 @@ an extended period of time (10min but it may change in the future).
 Cluster autoscaler is configured per instance group (GCE) or node pool (GKE).
 
 If you are using GCE then you can either enable it while creating a cluster with kube-up.sh script. 
-To configure cluser autoscaler you have to set 3 environment variables:
+To configure cluster autoscaler you have to set 3 environment variables:
 
 * `KUBE_ENABLE_CLUSTER_AUTOSCALER` - it enables cluster autoscaler if set to true.
-* `KUBE_AUTOSCALING_MIN_NODES` - minimum number of nodes in the cluster.
-* `KUBE_AUTOSCALING_MAX_NODES` - maximum number of nodes in the cluster.
+* `KUBE_AUTOSCALER_MIN_NODES` - minimum number of nodes in the cluster.
+* `KUBE_AUTOSCALER_MAX_NODES` - maximum number of nodes in the cluster.
 
 Example:
 
 ```shell
-KUBE_ENABLE_CLUSTER_AUTOSCALER=true KUBE_AUTOSCALING_MIN_NODES=3 KUBE_AUTOSCALING_MAX_NODES=10 NUM_NODES=5 ./cluster/kube-up.sh
+KUBE_ENABLE_CLUSTER_AUTOSCALER=true KUBE_AUTOSCALER_MIN_NODES=3 KUBE_AUTOSCALER_MAX_NODES=10 NUM_NODES=5 ./cluster/kube-up.sh
 ```
 
 On GKE you configure cluster autoscaler either on cluster creation or update or when creating a particular node pool
@@ -111,11 +111,11 @@ to the corresponding `gcloud` commands.
 Examples:
 
 ```shell
-gcloud container clusters create mytestcluster --zone=us-central1-b --enable-autoscaling=true --min-nodes=3 --max-nodes=10 --num-nodes=5
+gcloud container clusters create mytestcluster --zone=us-central1-b --enable-autoscaling --min-nodes=3 --max-nodes=10 --num-nodes=5
 ```
 
 ```shell
-gcloud container clusters update mytestcluster --enable-autoscaling=true --min-nodes=1 --max-nodes=15
+gcloud container clusters update mytestcluster --enable-autoscaling --min-nodes=1 --max-nodes=15
 ```
 
 **Cluster autoscaler expects that nodes have not been manually modified (e.g. by adding labels via kubectl) as those properties would not be propagated to the new nodes within the same instance group.**
@@ -180,7 +180,7 @@ For the purposes of these flags, _legacy_ APIs are those APIs which have been ex
 
 The objects that are stored to disk for a cluster's internal representation of the Kubernetes resources active in the cluster are written using a particular version of the API.
 When the supported API changes, these objects may need to be rewritten in the newer API.  Failure to do this will eventually result in resources that are no longer decodable or usable
-by the kubernetes API server.
+by the Kubernetes API server.
 
 `KUBE_API_VERSIONS` environment variable for the `kube-apiserver` binary which controls the API versions that are supported in the cluster. The first version in the list is used as the cluster's storage version. Hence, to set a specific version as the storage version, bring it to the front of list of versions in the value of `KUBE_API_VERSIONS`.  You need to restart the `kube-apiserver` binary
 for changes to this variable to take effect.

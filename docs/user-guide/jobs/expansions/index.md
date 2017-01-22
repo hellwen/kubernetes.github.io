@@ -1,4 +1,5 @@
 ---
+title: Parallel Processing using Expansions
 ---
 
 * TOC
@@ -32,7 +33,7 @@ We also put the same label on the pod template so that we can check on all Pods 
 with a single command.
 After the job is created, the system will add more labels that distinguish one Job's pods
 from another Job's pods.
-Note that the label key `jobgroup` is not special to Kubernetes. you can pick your own label scheme.
+Note that the label key `jobgroup` is not special to Kubernetes. You can pick your own label scheme.
 
 Next, expand the template into multiple files, one for each item to be processed.
 
@@ -108,7 +109,7 @@ Processing item cherry
 
 In the first example, each instance of the template had one parameter, and that parameter was also
 used as a label.  However label keys are limited in [what characters they can
-contain](docs/user-guide/labels/#syntax-and-character-set).
+contain](/docs/user-guide/labels/#syntax-and-character-set).
 
 This slightly more complex example uses a the jinja2 template language to generate our objects.
 We will use a one-line python script to convert the template to a file.
@@ -127,7 +128,7 @@ First, copy and paste the following template of a Job object, into a file called
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: jobexample-{{ {{ name }} }}
+  name: jobexample-{{ name }}
   labels:
     jobgroup: jobexample
 spec:
@@ -187,7 +188,7 @@ If you have a large number of job objects, you may find that:
   concurrent requests to a shared resource, such as a database,
   used by all the pods in the job.
 - very large numbers of jobs created at once overload the
-  kubernetes apiserver, controller, or scheduler.
+  Kubernetes apiserver, controller, or scheduler.
 
 In this case, you can consider one of the
 other [job patterns](/docs/user-guide/jobs/#job-patterns).

@@ -2,7 +2,7 @@
 assignees:
 - dchen1107
 - yifan-gu
-
+title: Known Issues when Using rkt
 ---
 
 The following features either are not supported or have large caveats when using the rkt container runtime. Increasing support for these items and others, including reasonable feature parity with the default container engine, is planned through future releases.
@@ -34,6 +34,8 @@ spec:
         name: does-not-exist
 ```
 
+Also note that if `subPath` is specified in the container's volumeMounts and the `subPath` doesn't exist in the corresponding volume, the pod execution will fail as well.
+
 ## Kubectl attach
 
 The `kubectl attach` command does not work under the rkt container runtime.
@@ -57,7 +59,7 @@ Under rktnetes, `kubectl get logs` currently cannot get logs from applications t
 
 ## Init containers
 
-The alpha [init container](https://github.com/kubernetes/kubernetes/blob/master/docs/proposals/container-init.md) feature is currently not supported.
+The beta [init container](/docs/user-guide/pods/init-containers.md) feature is currently not supported.
 
 ## Container restart back-off
 
@@ -97,6 +99,8 @@ On the other hand, when running the pod with [stage1-fly](https://coreos.com/rkt
 
 Patching a pod to change the image will result in the entire pod restarting, not just the container that was changed.
 
-## Volume mounts specifying a subPath
+## ImagePullPolicy 'Always'
 
-The [subPath](https://github.com/kubernetes/kubernetes/pull/22575) feature does not work correctly under rkt. In addition, the issue of non-existent host volume paths being invalid, mentioned above, would cause many common use cases for subPaths to fail in the same way. In some cases, this issue can be worked around by creating and using subdirectories from within the container, rather than relying on Kubernetes to do so.
+When the container's image pull policy is `Always`, rkt will always pull the image from remote even if the image has not changed at all.
+This can add significant latency for large images.
+The issue is tracked by rkt upstream at [#2937](https://github.com/coreos/rkt/issues/2937).

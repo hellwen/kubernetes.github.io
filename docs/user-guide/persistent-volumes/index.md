@@ -4,7 +4,7 @@ assignees:
 - mikedanese
 - saad-ali
 - thockin
-
+title: Persistent Volumes
 ---
 
 This document describes the current state of `PersistentVolumes` in Kubernetes.  Familiarity with [volumes](/docs/user-guide/volumes/) is suggested.
@@ -18,7 +18,7 @@ Managing storage is a distinct problem from managing compute. The `PersistentVol
 
 A `PersistentVolume` (PV) is a piece of networked storage in the cluster that has been provisioned by an administrator.  It is a resource in the cluster just like a node is a cluster resource.   PVs are volume plugins like Volumes, but have a lifecycle independent of any individual pod that uses the PV.  This API object captures the details of the implementation of the storage, be that NFS, iSCSI, or a cloud-provider-specific storage system.
 
-A `PersistentVolumeClaim` (PVC) is a request for storage by a user.  It is similar to a pod.  Pods consume node resources and PVCs consume PV resources.  Pods can request specific levels of resources (CPU and Memory).  Claims can request specific size and access modes (e.g, can be mounted once read/write or many times read-only).
+A `PersistentVolumeClaim` (PVC) is a request for storage by a user.  It is similar to a pod.  Pods consume node resources and PVCs consume PV resources.  Pods can request specific levels of resources (CPU and Memory).  Claims can request specific size and access modes (e.g., can be mounted once read/write or many times read-only).
 
 While `PersistentVolumeClaims` allow a user to consume abstract storage
 resources, it is common that users need `PersistentVolumes` with varying
@@ -70,7 +70,36 @@ When a user is done with their volume, they can delete the PVC objects from the 
 
 ### Reclaiming
 
-The reclaim policy for a `PersistentVolume` tells the cluster what to do with the volume after it has been released of its claim.  Currently, volumes can either be Retained, Recycled or Deleted.  Retention allows for manual reclamation of the resource.  For those volume plugins that support it, deletion removes both the `PersistentVolume` object from Kubernetes as well as deletes associated storage asset in external infrastructure such as AWS EBS, GCE PD or Cinder volume.  Volumes that were dynamically provisioned are always deleted.  If supported by appropriate volume plugin, recycling performs a basic scrub (`rm -rf /thevolume/*`) on the volume and makes it available again for a new claim.
+The reclaim policy for a `PersistentVolume` tells the cluster what to do with the volume after it has been released of its claim.  Currently, volumes can either be Retained, Recycled or Deleted.  Retention allows for manual reclamation of the resource.  For those volume plugins that support it, deletion removes both the `PersistentVolume` object from Kubernetes, as well as deleting the associated storage asset in external infrastructure (such as an AWS EBS, GCE PD, Azure Disk, or Cinder volume).  Volumes that were dynamically provisioned are always deleted.
+
+#### Recycling
+
+If supported by appropriate volume plugin, recycling performs a basic scrub (`rm -rf /thevolume/*`) on the volume and makes it available again for a new claim.
+
+However, an administrator can configure a custom recycler pod templates using the Kubernetes controller manager command line arguments as described [here](/docs/admin/kube-controller-manager/). The custom recycler pod template must contain a `volumes` specification, as shown in the example below:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pv-recycler-
+  namespace: default
+spec:
+  restartPolicy: Never
+  volumes:
+  - name: vol
+    hostPath:
+      path: /any/path/it/will/be/replaced
+  containers:
+  - name: pv-recycler
+    image: "gcr.io/google_containers/busybox"
+    command: ["/bin/sh", "-c", "test -e /scrub && rm -rf /scrub/..?* /scrub/.[!.]* /scrub/*  && test -z \"$(ls -A /scrub)\" || exit 1"]
+    volumeMounts:
+    - name: vol
+      mountPath: /scrub
+```
+
+However, the particular path specified in the custom recycler pod template in the `volumes` part is replaced with the particular path of the volume that is being recycled.
 
 ## Types of Persistent Volumes
 
@@ -79,6 +108,7 @@ The reclaim policy for a `PersistentVolume` tells the cluster what to do with th
 * GCEPersistentDisk
 * AWSElasticBlockStore
 * AzureFile
+* AzureDisk
 * FC (Fibre Channel)
 * NFS
 * iSCSI
@@ -141,6 +171,7 @@ In the CLI, the access modes are abbreviated to:
 | :---                 |     :---:    |    :---:    |    :---:     |
 | AWSElasticBlockStore | x            | -           | -            |
 | AzureFile            | x            | x           | x            |
+| AzureDisk            | x            | -           | -            |
 | CephFS               | x            | x           | x            |
 | Cinder               | x            | -           | -            |
 | FC                   | x            | x           | -            |
@@ -150,7 +181,7 @@ In the CLI, the access modes are abbreviated to:
 | HostPath             | x            | -           | -            |
 | iSCSI                | x            | x           | -            |
 | NFS                  | x            | x           | x            |
-| RDB                  | x            | x           | -            |
+| RBD                  | x            | x           | -            |
 | VsphereVolume        | x            | -           | -            |
 
 ### Class
@@ -164,15 +195,15 @@ class and can only be bound to PVCs that request no particular class.
 In the future after beta, the `volume.beta.kubernetes.io/storage-class`
 annotation will become an attribute.
 
-### Recycling Policy
+### Reclaim Policy
 
-Current recycling policies are:
+Current reclaim policies are:
 
 * Retain -- manual reclamation
 * Recycle -- basic scrub ("rm -rf /thevolume/*")
-* Delete -- associated storage asset such as AWS EBS, GCE PD or OpenStack Cinder volume is deleted
+* Delete -- associated storage asset such as AWS EBS, GCE PD, Azure Disk, or OpenStack Cinder volume is deleted
 
-Currently, only NFS and HostPath support recycling. AWS EBS, GCE PD and Cinder volumes support deletion.
+Currently, only NFS and HostPath support recycling. AWS EBS, GCE PD, Azure Disk, and Cinder volumes support deletion.
 
 ### Phase
 
@@ -306,7 +337,7 @@ for details.
 
 ```yaml
 kind: StorageClass
-apiVersion: extensions/v1beta1
+apiVersion: storage.k8s.io/v1beta1
 metadata:
   name: standard
 provisioner: kubernetes.io/aws-ebs
@@ -330,7 +361,7 @@ used.
 
 ```yaml
 kind: StorageClass
-apiVersion: extensions/v1beta1
+apiVersion: storage.k8s.io/v1beta1
 metadata:
   name: slow
 provisioner: kubernetes.io/aws-ebs
@@ -350,7 +381,7 @@ parameters:
 
 ```yaml
 kind: StorageClass
-apiVersion: extensions/v1beta1
+apiVersion: storage.k8s.io/v1beta1
 metadata:
   name: slow
 provisioner: kubernetes.io/gce-pd
@@ -362,31 +393,38 @@ parameters:
 * `type`: `pd-standard` or `pd-ssd`. Default: `pd-ssd`
 * `zone`: GCE zone. If not specified, a random zone in the same region as controller-manager will be chosen.
 
-#### GLUSTERFS
+#### Glusterfs
 
 ```yaml
-apiVersion: extensions/v1beta1
+apiVersion: storage.k8s.io/v1beta1
 kind: StorageClass
 metadata:
   name: slow
 provisioner: kubernetes.io/glusterfs
 parameters:
-  endpoint: "glusterfs-cluster"
   resturl: "http://127.0.0.1:8081"
+  restauthenabled: "true"
   restuser: "admin"
-  restuserkey: "password"
+  secretNamespace: "default"
+  secretName: "heketi-secret"
+
 ```
 
-* `endpoint`: `glusterfs-cluster` is the endpoint/service name which includes GlusterFS trusted pool IP addresses and this parameter is mandatory.
-* `resturl` : Gluster REST service url which provision gluster volumes on demand. The format should be a valid URL and this is a mandatory parameter for GlusterFS dynamic provisioner.
-* `restuser` : Gluster REST service user who has access to create volumes in the Gluster Trusted Pool. This parameter is optional, empty string will be used when omitted.
-* `restuserkey` : Gluster REST service user's password which will be used for authentication to the REST server. This parameter is optional, empty string will be used when omitted.
+* `resturl`: Gluster REST service/Heketi service url which provision gluster volumes on demand. The general format should be `IPaddress:Port` and this is a mandatory parameter for GlusterFS dynamic provisioner. If Heketi service is exposed as a routable service in openshift/kubernetes setup, this can have a format similar to
+`http://heketi-storage-project.cloudapps.mystorage.com` where the fqdn is a resolvable heketi service url.
+* `restauthenabled` : Gluster REST service authentication boolean that enables authentication to the REST server. If this value is 'true', `restuser` and `restuserkey` or `secretNamespace` + `secretName` have to be filled. This option is deprecated, authentication is enabled when any of `restuser`, `restuserkey`, `secretName` or `secretNamespace` is specified.
+* `restuser` : Gluster REST service/Heketi user who has access to create volumes in the Gluster Trusted Pool.
+* `restuserkey` : Gluster REST service/Heketi user's password which will be used for authentication to the REST server. This parameter is deprecated in favor of `secretNamespace` + `secretName`.
+* `secretNamespace` + `secretName` : Identification of Secret instance that containes user password to use when talking to Gluster REST service. These parameters are optional, empty password will be used when both `secretNamespace` and `secretName` are omitted. The provided secret must have type "kubernetes.io/glusterfs", e.g. created in this way:
+  ```
+  $ kubectl create secret heketi-secret --type="kubernetes.io/glusterfs" --from-literal=key='opensesame' --namespace=default
+  ```
 
 #### OpenStack Cinder
 
 ```yaml
 kind: StorageClass
-apiVersion: extensions/v1beta1
+apiVersion: storage.k8s.io/v1beta1
 metadata:
   name: gold
 provisioner: kubernetes.io/cinder
@@ -397,3 +435,120 @@ parameters:
 
 * `type`: [VolumeType](http://docs.openstack.org/admin-guide/dashboard-manage-volumes.html) created in Cinder. Default is empty.
 * `availability`: Availability Zone. Default is empty.
+
+#### vSphere
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: fast
+provisioner: kubernetes.io/vsphere-volume
+parameters:
+  diskformat: zeroedthick
+```
+
+* `diskformat`: `thin`, `zeroedthick` and `eagerzeroedthick`. Default: `"thin"`.
+
+#### Ceph RBD
+
+```yaml
+  apiVersion: storage.k8s.io/v1beta1
+  kind: StorageClass
+  metadata:
+    name: fast
+  provisioner: kubernetes.io/rbd
+  parameters:
+    monitors: 10.16.153.105:6789
+    adminId: kube
+    adminSecretName: ceph-secret
+    adminSecretNamespace: kube-system
+    pool: kube
+    userId: kube
+    userSecretName: ceph-secret-user
+```
+
+* `monitors`: Ceph monitors, comma delimited. This parameter is required.
+* `adminId`: Ceph client ID that is capable of creating images in the pool. Default is "admin".
+* `adminSecretNamespace`: The namespace for `adminSecret`. Default is "default".
+* `adminSecret`: Secret Name for `adminId`. This parameter is required. The provided secret must have type "kubernetes.io/rbd".
+* `pool`: Ceph RBD pool. Default is "rbd".
+* `userId`: Ceph client ID that is used to map the RBD image. Default is the same as `adminId`.
+* `userSecretName`: The name of Ceph Secret for `userId` to map RBD image. It must exist in the same namespace as PVCs. This parameter is required. The provided secret must have type "kubernetes.io/rbd", e.g. created in this way:
+  ```
+  $ kubectl create secret ceph-secret --type="kubernetes.io/rbd" --from-literal=key='QVFEQ1pMdFhPUnQrSmhBQUFYaERWNHJsZ3BsMmNjcDR6RFZST0E9PQ==' --namespace=kube-system
+  ```
+
+#### Quobyte
+
+```yaml
+apiVersion: storage.k8s.io/v1beta1
+kind: StorageClass
+metadata:
+   name: slow
+provisioner: kubernetes.io/quobyte
+parameters:
+    quobyteAPIServer: "http://138.68.74.142:7860"
+    registry: "138.68.74.142:7861"
+    adminSecretName: "quobyte-admin-secret"
+    adminSecretNamespace: "kube-system"
+    user: "root"
+    group: "root"
+    quobyteConfig: "BASE"
+    quobyteTenant: "DEFAULT"
+```
+
+* `quobyteAPIServer`: API Server of Quobyte in the format `http(s)://api-server:7860`
+* `registry`: Quobyte registry to use to mount the volume. You can specify the registry as ``<host>:<port>`` pair or if you want to specify multiple registries you just have to put a comma between them e.q. ``<host1>:<port>,<host2>:<port>,<host3>:<port>``. The host can be an IP address or if you have a working DNS you can also provide the DNS names.
+* `adminSecretNamespace`: The namespace for `adminSecretName`. Default is "default".
+* `adminSecretName`: secret that holds information about the Quobyte user and the password to authenticate agains the API server. The provided secret must have type "kubernetes.io/quobyte", e.g. created in this way:
+  ```
+  $ kubectl create secret quobyte-admin-secret --type="kubernetes.io/quobyte" --from-literal=key='opensesame' --namespace=kube-system
+  ```
+* `user`: maps all access to this user. Default is "root".
+* `group`: maps all access to this group. Default is "nfsnobody".
+* `quobyteConfig`: use the specified configuration to create the volume. You can create a new configuration or modify an existing one with the Web console or the quobyte CLI. Default is "BASE".
+* `quobyteTenant`: use the specified tenant ID to create/delete the volume. This Quobyte tenant has to be already present in Quobyte. Default is "DEFAULT".
+
+#### Azure Disk
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: slow
+provisioner: kubernetes.io/azure-disk
+parameters:
+  skuName: Standard_LRS
+  location: eastus
+  storageAccount: azure_storage_account_name
+```
+
+* `skuName`: Azure storage account Sku tier. Default is empty.
+* `location`: Azure storage account location. Default is empty.
+* `storageAccount`: Azure storage account name. If storage account is not provided, all storage accounts associated with the resource group are searched to find one that matches `skuName` and `location`. If storage account is provided, `skuName` and `location` are ignored.
+
+
+## Writing Portable Configuration
+
+If you're writing configuration templates or examples that run on a wide range of clusters
+and need persistent storage, we recommend that you use the following pattern:
+
+- Do include PersistentVolumeClaim objects in your bundle of config (alongside Deployments, ConfigMaps, etc).
+- Do not include PersistentVolume objects in the config, since the user instantiating the config may not have
+  permission to create PersistentVolumes.
+- Give the user the option of providing a storage class name when instantating the template.
+  - If the user provides a storage class name, and the cluster is version 1.4 or newer, put that value into the `volume.beta.kubernetes.io/storage-class` annotation of the PVC.
+    This will cause the PVC to match the right storage class if the cluster has StorageClasses enabled by the admin.
+  - If the user does not provide a storage class name or the cluster is version 1.3, then instead put a `volume.alpha.kubernetes.io/storage-class: default` annotation on the PVC.
+    - This will cause a PV to be automatically provisioned for the user with sane default characteristics on some clusters.  
+    - Despite the word `alpha` in the name, the code behind this annotation has `beta` level support.
+    - Do not use `volume.beta.kubernetes.io/storage-class:` with any value including the empty string since it will prevent DefaultStorageClass admission controller
+      from running if enabled.
+- In your tooling, do watch for PVCs that are not getting bound after some time and surface this to the user, as this may indicate that the cluster has no dynamic
+  storage support (in which case the user should create a matching PV) or the cluster has no storage system (in which case the user cannot deploy config requiring
+  PVCs).
+- In the future, we expect most clusters to have `DefaultStorageClass` enabled, and to have some form of storage available.  However, there may not be any
+  storage class names which work on all clusters, so continue to not set one by default.
+  At some point, the alpha annotation will cease to have meaning, but the unset `storageClass` field on the PVC
+  will have the desired effect.

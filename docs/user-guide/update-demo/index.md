@@ -1,10 +1,8 @@
 ---
 assignees:
-- lavalamp
 - mikedanese
-
+title: Rolling Update Demo
 ---
-
 
 This example demonstrates the usage of Kubernetes to perform a [rolling update](/docs/user-guide/kubectl/kubectl_rolling-update/) on a running group of [pods](/docs/user-guide/pods/). See [here](/docs/user-guide/managing-deployments/#updating-your-application-without-a-service-outage) to understand why you need a rolling update. Also check [rolling update design document](https://github.com/kubernetes/kubernetes/blob/{{page.githubbranch}}/docs/design/simple-rolling-update.md) for more information.
 
@@ -13,11 +11,11 @@ here](https://github.com/kubernetes/kubernetes.github.io/tree/{{page.docsbranch}
 
 ### Step Zero: Prerequisites
 
-This example assumes that you have forked the repository and [turned up a Kubernetes cluster](/docs/getting-started-guides/):
+This example assumes that you have forked the docs repository and [turned up a Kubernetes cluster](/docs/getting-started-guides/):
 
 ```shell
-$ cd kubernetes
-$ ./cluster/kube-up.sh
+$ git clone -b {{page.docsbranch}} https://github.com/kubernetes/kubernetes.github.io
+$ cd kubernetes.github.io
 ```
 
 ### Step One: Turn up the UX for the demo
@@ -81,14 +79,7 @@ This first stops the replication controller by turning the target number of repl
 
 ### Step Six: Cleanup
 
-To turn down a Kubernetes cluster:
-
-```shell
-$ ./cluster/kube-down.sh
-```
-
-Kill the proxy running in the background:
-After you are done running this demo make sure to kill it:
+After you are done running this demo make sure to kill the proxy running in the background:
 
 ```shell
 $ jobs

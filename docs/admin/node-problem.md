@@ -2,7 +2,7 @@
 assignees:
 - Random-Liu
 - dchen1107
-
+title: Monitoring Node Health
 ---
 
 * TOC
@@ -36,7 +36,7 @@ it to [support other log format](/docs/admin/node-problem/#support-other-log-for
 
 ## Enable/Disable in GCE cluster
 
-Node problem detector is [running as a cluster addon](cluster-large.md/#Addon-Resources) enabled by default in the
+Node problem detector is [running as a cluster addon](cluster-large.md/#addon-resources) enabled by default in the
 gce cluster.
 
 You can enable/disable it by setting the environment variable
@@ -49,7 +49,7 @@ either `kubectl` or addon pod.
 
 ### Kubectl
 
-This is the recommanded way to start node problem detector outside of GCE. It
+This is the recommended way to start node problem detector outside of GCE. It
 provides more flexible management, such as overwriting the default
 configuration to fit it into your environment or detect
 customized node problems.
@@ -238,7 +238,7 @@ implement a new translator for a new log format.
 
 ## Caveats
 
-It is recommanded to run the node problem detector in your cluster to monitor
+It is recommended to run the node problem detector in your cluster to monitor
 the node health. However, you should be aware that this will introduce extra
 resource overhead on each node. Usually this is fine, because:
 

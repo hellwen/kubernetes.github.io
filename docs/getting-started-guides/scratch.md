@@ -3,7 +3,7 @@ assignees:
 - erictune
 - lavalamp
 - thockin
-
+title: Creating a Custom Cluster from Scratch
 ---
 
 This guide is for people who want to craft a custom Kubernetes cluster.  If you
@@ -57,6 +57,7 @@ on how flags are set on various components.
 
 ### Network
 
+#### Network Connectivity
 Kubernetes has a distinctive [networking model](/docs/admin/networking).
 
 Kubernetes allocates an IP address to each pod.  When creating a cluster, you
@@ -66,23 +67,36 @@ the node is added.  A process in one pod should be able to communicate with
 another pod using the IP of the second pod.  This connectivity can be
 accomplished in two ways:
 
-- Configure network to route Pod IPs
-  - Harder to setup from scratch.
-  - Google Compute Engine ([GCE](/docs/getting-started-guides/gce)) and [AWS](/docs/getting-started-guides/aws) guides use this approach.
-  - Need to make the Pod IPs routable by programming routers, switches, etc.
-  - Can be configured external to Kubernetes, or can implement in the "Routes" interface of a Cloud Provider module.
-  - Generally highest performance.
-- Create an Overlay network
-  - Easier to setup
-  - Traffic is encapsulated, so per-pod IPs are routable.
-  - Examples:
-    - [Flannel](https://github.com/coreos/flannel)
-    - [Weave](http://weave.works/)
-    - [Open vSwitch (OVS)](http://openvswitch.org/)
-  - Does not require "Routes" portion of Cloud Provider module.
-  - Reduced performance (exactly how much depends on your solution).
+- **Using an overlay network**
+  - An overlay network obscures the underlying network architecture from the 
+    pod network through traffic encapsulation (e.g. vxlan).
+  - Encapsulation reduces performance, though exactly how much depends on your solution.
+- **Without an overlay network**
+  - Configure the underlying network fabric (switches, routers, etc.) to be aware of pod IP addresses.
+  - This does not require the encapsulation provided by an overlay, and so can achieve 
+    better performance.
 
-You need to select an address range for the Pod IPs.
+Which method you choose depends on your environment and requirements.  There are various ways 
+to implement one of the above options: 
+
+- **Use a network plugin which is called by Kubernetes**
+  - Kubernetes supports the [CNI](https://github.com/containernetworking/cni) network plugin interface.
+  - There are a number of solutions which provide plugins for Kubernetes (listed alphabetically): 
+    - [Calico](http://docs.projectcalico.org/)
+    - [Flannel](https://github.com/coreos/flannel)
+    - [Open vSwitch (OVS)](http://openvswitch.org/)
+    - [Romana](http://romana.io/)
+    - [Weave](http://weave.works/)
+    - [More found here](/docs/admin/networking#how-to-achieve-this)
+  - You can also write your own.
+- **Compile support directly into Kubernetes**
+  - This can be done by implementing the "Routes" interface of a Cloud Provider module.
+  - The Google Compute Engine ([GCE](/docs/getting-started-guides/gce)) and [AWS](/docs/getting-started-guides/aws) guides use this approach.
+- **Configure the network external to Kubernetes**
+  - This can be done by manually running commands, or through a set of externally maintained scripts.
+  - You have to implement this yourself, but it can give you an extra degree of flexibility.
+
+You will need to select an address range for the Pod IPs. Note that IPv6 is not yet supported for Pod IPs.
 
 - Various approaches:
   - GCE: each project has its own `10.0.0.0/8`.  Carve off a `/16` for each
@@ -90,10 +104,8 @@ You need to select an address range for the Pod IPs.
     Each node gets a further subdivision of this space.
   - AWS: use one VPC for whole organization, carve off a chunk for each
     cluster, or use different VPC for different clusters.
-  - IPv6 is not supported yet.
 - Allocate one CIDR subnet for each node's PodIPs, or a single large CIDR
-  from which smaller CIDRs are automatically allocated to each node (if nodes
-  are dynamically added).
+  from which smaller CIDRs are automatically allocated to each node.
   - You need max-pods-per-node * max-number-of-nodes IPs in total. A `/24` per
     node supports 254 pods per machine and is a common choice.  If IPs are
     scarce, a `/26` (62 pods per machine) or even a `/27` (30 pods) may be sufficient.
@@ -115,6 +127,12 @@ Also, you need to pick a static IP for master node.
 - Call this `MASTER_IP`.
 - Open any firewalls to allow access to the apiserver ports 80 and/or 443.
 - Enable ipv4 forwarding sysctl, `net.ipv4.ip_forward = 1`
+
+#### Network Policy
+
+Kubernetes enables the definition of fine-grained network policy between Pods using the [NetworkPolicy](/docs/user-guide/network-policy) resource.
+
+Not all networking providers support the Kubernetes NetworkPolicy API, see [Using Network Policy](/docs/getting-started-guides/network-policy/walkthrough/) for more information.
 
 ### Cluster Naming
 
@@ -162,7 +180,7 @@ we recommend that you run these as containers, so you need an image to be built.
 You have several choices for Kubernetes images:
 
 - Use images hosted on Google Container Registry (GCR):
-  - e.g `gcr.io/google_containers/hyperkube:$TAG`, where `TAG` is the latest
+  - e.g. `gcr.io/google_containers/hyperkube:$TAG`, where `TAG` is the latest
     release tag, which can be found on the [latest releases page](https://github.com/kubernetes/kubernetes/releases/latest).
   - Ensure $TAG is the same tag as the release tag you are using for kubelet and kube-proxy.
   - The [hyperkube](https://releases.k8s.io/{{page.githubbranch}}/cmd/hyperkube) binary is an all in one binary
@@ -363,7 +381,7 @@ The minimum version required is [v0.5.6](https://github.com/coreos/rkt/releases/
 minimum version required to match rkt v0.5.6 is
 [systemd 215](http://lists.freedesktop.org/archives/systemd-devel/2014-July/020903.html).
 
-[rkt metadata service](https://github.com/coreos/rkt/blob/master/Documentation/networking.md) is also required
+[rkt metadata service](https://github.com/coreos/rkt/blob/master/Documentation/networking/overview.md) is also required
 for rkt networking support.  You can start rkt metadata service by using command like
 `sudo systemd-run rkt metadata-service`
 
@@ -492,9 +510,9 @@ availability.
 
 To run an etcd instance:
 
-1. copy `cluster/saltbase/salt/etcd/etcd.manifest`
-1. make any modifications needed
-1. start the pod by putting it into the kubelet manifest directory
+1. Copy `cluster/saltbase/salt/etcd/etcd.manifest`
+1. Make any modifications needed
+1. Start the pod by putting it into the kubelet manifest directory
 
 ### Apiserver, Controller Manager, and Scheduler
 
@@ -628,7 +646,7 @@ This pod mounts several node file system directories using the  `hostPath` volum
 
 Apiserver supports several cloud providers.
 
-- options for `--cloud-provider` flag are `aws`, `gce`, `mesos`, `openshift`, `ovirt`, `rackspace`, `vagrant`, or unset.
+- options for `--cloud-provider` flag are `aws`, `azure`, `cloudstack`, `fake`, `gce`, `mesos`, `openstack`, `ovirt`, `photon`, `rackspace`, `vsphere`, or unset.
 - unset used for e.g. bare metal setups.
 - support for new IaaS is added by contributing code [here](https://releases.k8s.io/{{page.githubbranch}}/pkg/cloudprovider/providers)
 
@@ -804,15 +822,13 @@ of their purpose is in the admin guide](/docs/admin/cluster-components/#addons).
 Notes for setting up each cluster service are given below:
 
 * Cluster DNS:
-  * required for many kubernetes examples
+  * required for many Kubernetes examples
   * [Setup instructions](http://releases.k8s.io/{{page.githubbranch}}/cluster/addons/dns/)
   * [Admin Guide](/docs/admin/dns/)
 * Cluster-level Logging
-  * Multiple implementations with different storage backends and UIs.
-  * [Elasticsearch Backend Setup Instructions](http://releases.k8s.io/{{page.githubbranch}}/cluster/addons/fluentd-elasticsearch/)
-  * [Google Cloud Logging Backend Setup Instructions](http://releases.k8s.io/{{page.githubbranch}}/cluster/addons/fluentd-gcp/).
-  * Both require running fluentd on each node.
-  * [User Guide](/docs/user-guide/logging/)
+  * [Cluster-level Logging Overview](/docs/user-guide/logging/overview)
+  * [Cluster-level Logging with Elasticsearch](/docs/user-guide/logging/elasticsearch)
+  * [Cluster-level Logging with Stackdriver Logging](/docs/user-guide/logging/stackdriver)
 * Container Resource Monitoring
   * [Setup instructions](http://releases.k8s.io/{{page.githubbranch}}/cluster/addons/cluster-monitoring/)
 * GUI
@@ -823,7 +839,27 @@ Notes for setting up each cluster service are given below:
 
 ### Running validate-cluster
 
-**TODO** explain how to use `cluster/validate-cluster.sh`
+`cluster/validate-cluster.sh` is used by `cluster/kube-up.sh` to determine if
+the cluster start succeeded.
+
+Example usage and output:
+
+```shell
+KUBECTL_PATH=$(which kubectl) NUM_NODES=3 KUBERNETES_PROVIDER=local cluster/validate-cluster.sh
+Found 3 node(s).
+NAME                    STATUS    AGE
+node1.local             Ready     1h
+node2.local             Ready     1h
+node3.local             Ready     1h
+Validate output:
+NAME                 STATUS    MESSAGE              ERROR
+controller-manager   Healthy   ok
+scheduler            Healthy   ok
+etcd-1               Healthy   {"health": "true"}
+etcd-2               Healthy   {"health": "true"}
+etcd-0               Healthy   {"health": "true"}
+Cluster validation succeeded
+```
 
 ### Inspect pods and services
 

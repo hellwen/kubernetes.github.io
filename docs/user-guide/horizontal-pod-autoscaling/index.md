@@ -2,7 +2,7 @@
 assignees:
 - fgrzadkowski
 - jszczepkowski
-
+title: Horizontal Pod Autoscaling
 ---
 
 This document describes the current state of Horizontal Pod Autoscaling in Kubernetes.
@@ -26,7 +26,7 @@ The autoscaler is implemented as a control loop.
 It periodically queries CPU utilization for the pods it targets.
 (The period of the autoscaler is controlled by `--horizontal-pod-autoscaler-sync-period` flag of controller manager.
 The default value is 30 seconds).
-Then, it compares the arithmetic mean of the pods' CPU utilization with the target and adjust the number of replicas if needed.
+Then, it compares the arithmetic mean of the pod's CPU utilization with the target and adjust the number of replicas if needed.
 
 CPU utilization is the recent CPU usage of a pod divided by the sum of CPU requested by the pod's containers.
 Please note that if some of the pod's containers do not have CPU request set,
@@ -69,7 +69,7 @@ The detailed documentation of `kubectl autoscale` can be found [here](/docs/user
 
 ## Autoscaling during rolling update
 
-Currently in Kubernetes, it is possible to perform a rolling update by managing replication controllers directly,
+Currently in Kubernetes, it is possible to perform a [rolling update](/docs/user-guide/rolling-updates/) by managing replication controllers directly,
 or by using the deployment object, which manages the underlying replication controllers for you.
 Horizontal Pod Autoscaler only supports the latter approach: the Horizontal Pod Autoscaler is bound to the deployment object,
 it sets the size for the deployment object, and the deployment is responsible for setting sizes of underlying replication controllers.
@@ -90,7 +90,7 @@ The cluster has to be started with `ENABLE_CUSTOM_METRICS` environment variable 
 ### Pod configuration
 
 The pods to be scaled must have cAdvisor-specific custom (aka application) metrics endpoint configured. The configuration format is described [here](https://github.com/google/cadvisor/blob/master/docs/application_metrics.md). Kubernetes expects the configuration to 
-  be placed in `definition.json` mounted via a [config map](/docs/user-guide/horizontal-pod-autoscaling/configmap/) in `/etc/custom-metrics`. A sample config map may look like this:
+  be placed in `definition.json` mounted via a [configMap](/docs/user-guide/configmap/) in `/etc/custom-metrics`. A sample config map may look like this:
 
 ```yaml
 apiVersion: v1
@@ -120,13 +120,14 @@ all running pods. Example:
       alpha/target.custom-metrics.podautoscaler.kubernetes.io: '{"items":[{"name":"qps", "value": "10"}]}'
 ```
 
-In this case if there are 4 pods running and each of them reports qps metric to be equal to 15 HPA will start 2 additional pods so there will be 6 pods in total. If there are multiple metrics passed in the annotation or CPU is configured as well then HPA will use the biggest 
-number of replicas that comes from the calculations.
+In this case, if there are four pods running and each pod reports a QPS metric of 15 or higher, horizontal pod autoscaling will start two additional pods (for a total of six pods running).
 
-At this moment even if target CPU utilization is not specified a default of 80% will be used. 
-To calculate number of desired replicas based only on custom metrics CPU utilization
-target should be set to a very large value (e.g. 100000%). Then CPU-related logic 
-will want only 1 replica, leaving the decision about higher replica count to cusom metrics (and min/max limits).
+If you specify multiple metrics in your annotation or if you set a target CPU utilization, horizontal pod autoscaling will scale to according to the metric that requires the highest number of replicas.
+
+If you do not specify a target for CPU utilization, Kubernetes defaults to an 80% utilization threshold for horizontal pod autoscaling.
+
+If you want to ensure that horizontal pod autoscaling calculates the number of required replicas based only on custom metrics, you should set the CPU utilization target to a very large value (such as 100000%). As this level of CPU utilization isn't possible, horizontal pod autoscaling will calculate based only on the custom metrics (and min/max limits).
+
 
 ## Further reading
 

@@ -1,9 +1,10 @@
 ---
+title: kubectl logs
 ---
 
 ## kubectl logs
 
-Print the logs for a container in a pod.
+Print the logs for a container in a pod
 
 ### Synopsis
 
@@ -17,73 +18,66 @@ kubectl logs [-f] [-p] POD [-c CONTAINER]
 ### Examples
 
 ```
-# Return snapshot logs from pod nginx with only one container
-kubectl logs nginx
-
-# Return snapshot of previous terminated ruby container logs from pod web-1
-kubectl logs -p -c ruby web-1
-
-# Begin streaming the logs of the ruby container in pod web-1
-kubectl logs -f -c ruby web-1
-
-# Display only the most recent 20 lines of output in pod nginx
-kubectl logs --tail=20 nginx
-
-# Show all logs from pod nginx written in the last hour
-kubectl logs --since=1h nginx
+  # Return snapshot logs from pod nginx with only one container
+  kubectl logs nginx
+  
+  # Return snapshot of previous terminated ruby container logs from pod web-1
+  kubectl logs -p -c ruby web-1
+  
+  # Begin streaming the logs of the ruby container in pod web-1
+  kubectl logs -f -c ruby web-1
+  
+  # Display only the most recent 20 lines of output in pod nginx
+  kubectl logs --tail=20 nginx
+  
+  # Show all logs from pod nginx written in the last hour
+  kubectl logs --since=1h nginx
 ```
 
 ### Options
 
 ```
-  -c, --container="": Print the logs of this container
-  -f, --follow[=false]: Specify if the logs should be streamed.
-      --include-extended-apis[=true]: If true, include definitions of new APIs via calls to the API server. [default true]
-      --limit-bytes=0: Maximum bytes of logs to return. Defaults to no limit.
-  -p, --previous[=false]: If true, print the logs for the previous instance of the container in a pod if it exists.
-      --since=0: Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.
-      --since-time="": Only return logs after a specific date (RFC3339). Defaults to all logs. Only one of since-time / since may be used.
-      --tail=-1: Lines of recent log file to display. Defaults to -1, showing all log lines.
-      --timestamps[=false]: Include timestamps on each line in the log output
+  -c, --container string    Print the logs of this container
+  -f, --follow              Specify if the logs should be streamed.
+      --limit-bytes int     Maximum bytes of logs to return. Defaults to no limit.
+  -p, --previous            If true, print the logs for the previous instance of the container in a pod if it exists.
+      --since duration      Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.
+      --since-time string   Only return logs after a specific date (RFC3339). Defaults to all logs. Only one of since-time / since may be used.
+      --tail int            Lines of recent log file to display. Defaults to -1, showing all log lines. (default -1)
+      --timestamps          Include timestamps on each line in the log output
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --alsologtostderr[=false]: log to standard error as well as files
-      --as="": Username to impersonate for the operation.
-      --certificate-authority="": Path to a cert. file for the certificate authority.
-      --client-certificate="": Path to a client certificate file for TLS.
-      --client-key="": Path to a client key file for TLS.
-      --cluster="": The name of the kubeconfig cluster to use
-      --context="": The name of the kubeconfig context to use
-      --insecure-skip-tls-verify[=false]: If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure.
-      --kubeconfig="": Path to the kubeconfig file to use for CLI requests.
-      --log-backtrace-at=:0: when logging hits line file:N, emit a stack trace
-      --log-dir="": If non-empty, write log files in this directory
-      --log-flush-frequency=5s: Maximum number of seconds between log flushes
-      --logtostderr[=true]: log to standard error instead of files
-      --match-server-version[=false]: Require server version to match client version
-      --namespace="": If present, the namespace scope for this CLI request.
-      --password="": Password for basic authentication to the API server.
-  -s, --server="": The address and port of the Kubernetes API server
-      --stderrthreshold=2: logs at or above this threshold go to stderr
-      --token="": Bearer token for authentication to the API server.
-      --user="": The name of the kubeconfig user to use
-      --username="": Username for basic authentication to the API server.
-      --v=0: log level for V logs
-      --vmodule=: comma-separated list of pattern=N settings for file-filtered logging
+      --alsologtostderr                  log to standard error as well as files
+      --as string                        Username to impersonate for the operation
+      --certificate-authority string     Path to a cert. file for the certificate authority
+      --client-certificate string        Path to a client certificate file for TLS
+      --client-key string                Path to a client key file for TLS
+      --cluster string                   The name of the kubeconfig cluster to use
+      --context string                   The name of the kubeconfig context to use
+      --insecure-skip-tls-verify         If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig string                Path to the kubeconfig file to use for CLI requests.
+      --log-backtrace-at traceLocation   when logging hits line file:N, emit a stack trace (default :0)
+      --log-dir string                   If non-empty, write log files in this directory
+      --logtostderr                      log to standard error instead of files
+      --match-server-version             Require server version to match client version
+  -n, --namespace string                 If present, the namespace scope for this CLI request
+      --password string                  Password for basic authentication to the API server
+      --request-timeout string           The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests. (default "0")
+  -s, --server string                    The address and port of the Kubernetes API server
+      --stderrthreshold severity         logs at or above this threshold go to stderr (default 2)
+      --token string                     Bearer token for authentication to the API server
+      --user string                      The name of the kubeconfig user to use
+      --username string                  Username for basic authentication to the API server
+  -v, --v Level                          log level for V logs
+      --vmodule moduleSpec               comma-separated list of pattern=N settings for file-filtered logging
 ```
 
-### SEE ALSO
-
-* [kubectl](kubectl.md)	 - kubectl controls the Kubernetes cluster manager
-
-###### Auto generated by spf13/cobra on 12-Aug-2016
 
 
-
-
+###### Auto generated by spf13/cobra on 13-Dec-2016
 
 <!-- BEGIN MUNGE: GENERATED_ANALYTICS -->
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/docs/user-guide/kubectl/kubectl_logs.md?pixel)]()
